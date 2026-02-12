@@ -34,11 +34,14 @@ export class Statfert {
 
     await this.sendStats(postables)
 
-    return setInterval(async () => this.sendStats(postables), actualIntervalTime)
+    return setInterval(
+      async () => this.sendStats(postables),
+      actualIntervalTime
+    )
   }
 
   /**
-   * Starts posting to Statcord on an interval.
+   * Posts stats to Statcord manually
    * @param postables The postables to post to the API. This defaults to just the guild count of your bot.
    * @throws If postables is an empty array, this will throw. If postables includes ShardCount, this will throw.
    */
