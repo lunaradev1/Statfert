@@ -2,14 +2,6 @@
 
 An implementation of the [Statcord](https://statcord.com) API for [Seyfert](https://seyfert.dev)
 
-> [!IMPORTANT]
->
-> I may have fucked up a bit with the source code. Deleted `statfert`. This
-> will be in effect for 24 hours. After which, this important message will be deleted.
-> Use `@lunaradev/statfert` for now in place of `statfert`. Thanks!
->
-> **- Lunara**
-
 ## Installation
 
 ### npm

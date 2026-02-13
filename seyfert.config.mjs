@@ -14,5 +14,6 @@ export default config.bot({
   intents: ['Guilds'],
   locations: {
     base: './tests',
+    commands: 'commands',
   },
 })

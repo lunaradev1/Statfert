@@ -21,6 +21,7 @@ export default [
       '@stylistic/indent-binary-ops': 'off',
       'max-params': 'off',
       'new-cap': 'off',
+      '@typescript-eslint/no-restricted-types': 'off',
       curly: 'off',
       'no-warning-comments': 'off',
       '@typescript-eslint/restrict-template-expressions': 'off',

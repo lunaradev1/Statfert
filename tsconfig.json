@@ -25,7 +25,11 @@
     "outDir": "dist/",
     "removeComments": true,
     "declaration": true,
-    "importHelpers": true
+    "importHelpers": true,
+
+    // Needed for tests
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "exclude": ["dist/*", "tests/*", "xo.config.ts", "seyfert.config.mjs"]
 }

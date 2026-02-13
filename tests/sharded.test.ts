@@ -1,22 +1,24 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { env } from 'bun'
-import { beforeAll, describe, expect, it } from 'bun:test'
+import { beforeAll, beforeEach, describe, expect, it } from 'bun:test'
 import { Client } from 'seyfert'
 import { ShardedStatfert, StatfertPostable } from '../src'
 
 describe('Sharded Statfert Test Suite', () => {
   let client: ShardedStatfert
+  const seyfert: Client = new Client()
 
   beforeAll(async () => {
+    await seyfert.start()
+  })
+
+  beforeEach(async () => {
     const apiKey = env['API_KEY']
 
     if (!apiKey) throw new Error('No API_KEY enviroment variable was provided.')
 
-    const seyfert = new Client()
     client = new ShardedStatfert(seyfert, apiKey)
-
-    await seyfert.start()
   })
 
   it('has valid client', () => {
@@ -40,10 +42,14 @@ describe('Sharded Statfert Test Suite', () => {
   })
 
   it('does not throw when used correctly', () => {
+    if (client.isRunning) client.stop()
+
     expect(async () => client.start()).not.toThrow()
   })
 
   it('does not throw when using all available postables', () => {
+    if (client.isRunning) client.stop()
+
     expect(async () =>
       client.start([
         StatfertPostable.CpuUsage,

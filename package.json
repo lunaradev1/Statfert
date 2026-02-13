@@ -1,6 +1,6 @@
 {
   "name": "statfert",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "type": "module",
   "private": false,
@@ -26,6 +26,7 @@
   "dependencies": {
     "seyfert": "^4.1",
     "tslib": "^2.8.1",
+    "type-fest": "^5.4.4",
     "undici": "^7.21.0"
   },
   "exports": {

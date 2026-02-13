@@ -10,16 +10,16 @@ export class ShardedStatfert extends Statfert {
   }
 
   public override async sendStats(postables = [StatfertPostable.GuildCount]) {
-    let body = {
+    this.body = {
       ...(await this.getBaseBody(postables)),
     }
 
     if (postables.includes(StatfertPostable.ShardCount))
-      body = {
-        ...body,
+      this.body = {
+        ...this.body,
         shardCount: this.client.gateway.totalShards,
       }
 
-    await this.postStats(this.client.botId, body)
+    await this.postStats(this.client.botId)
   }
 }

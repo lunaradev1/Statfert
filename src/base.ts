@@ -1,10 +1,23 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable no-await-in-loop */
 import type { BaseClient } from 'seyfert/lib/client/base'
 import { request } from 'undici'
 import { StatfertPostable } from './postable'
 import { getCpuUsage, getRamInformation } from './utils'
 
+type StatfertGraph = {
+  id: string
+  data: Record<string, any>
+}
+
 export class Statfert {
+  public readonly commands: Map<string, number> = new Map<string, number>()
+  protected body: Record<string, any> = {}
+  private readonly graphs: StatfertGraph[] = []
+  private isAutoPosting = false
+  private isPosting = false
+  private interval: NodeJS.Timeout | null = null
+
   constructor(
     public readonly client: BaseClient,
     public readonly apiKey: string
@@ -12,11 +25,15 @@ export class Statfert {
     if (apiKey.length === 0) throw new Error('The API key cannot be empty!')
   }
 
+  public get isRunning() {
+    return this.isAutoPosting
+  }
+
   /**
    * Starts posting to Statcord on an interval.
    * @param postables The postables to post to the API. This defaults to just the guild count of your bot.
    * @param timeBetweenRequests How long to wait between requests, in seconds. Minimum is 1 minute. Defaults to 60 seconds.
-   * @throws If timeBetweenRequests is less than 60, this method will throw. If postables is an empty array, this will also throw.
+   * @throws If timeBetweenRequests is less than 60, this method will throw. If postables is an empty array, this will also throw. If this instance is already started, this will also throw.
    * @returns The interval in case you want to clear it later
    */
   public async start(
@@ -32,12 +49,32 @@ export class Statfert {
 
     const actualIntervalTime = timeBetweenRequests * 1000 // Converted to milliseconds
 
+    if (this.isAutoPosting)
+      throw new Error(
+        'You cannot use this method, this instance is already autoposting!'
+      )
+
+    this.isAutoPosting = true
     await this.sendStats(postables)
 
-    return setInterval(
-      async () => this.sendStats(postables),
-      actualIntervalTime
-    )
+    this.interval = setInterval(async () => {
+      void this.sendStats(postables)
+    }, actualIntervalTime)
+
+    return this.interval
+  }
+
+  public stop() {
+    if (this.interval === null) return
+
+    this.isAutoPosting = false
+    clearInterval(this.interval)
+    this.interval = null
+  }
+
+  public createCustomGraph(graph: StatfertGraph): this {
+    this.graphs.push(graph)
+    return this
   }
 
   /**
@@ -50,18 +87,16 @@ export class Statfert {
       throw new Error(
         'The default Statfert does not include shard count capabilities, instantiate ShardedStatfert instead!'
       )
-    const body = await this.getBaseBody(postables)
+    this.body = await this.getBaseBody(postables)
 
-    await this.postStats(this.client.botId, body)
+    await this.postStats(this.client.botId)
   }
 
   protected async getBaseBody(postables: StatfertPostable[]) {
     let body = {}
+    const guilds = await this.getGuilds()
 
     for (const postable of postables) {
-      if (postables.length === 0)
-        throw new Error('The postables array cannot be empty!')
-
       switch (postable) {
         case StatfertPostable.CpuUsage: {
           body = {
@@ -72,7 +107,6 @@ export class Statfert {
         }
 
         case StatfertPostable.GuildCount: {
-          const guilds = await this.getGuilds()
           body = {
             ...body,
             guildCount: guilds.length,
@@ -94,7 +128,6 @@ export class Statfert {
         }
 
         case StatfertPostable.Members: {
-          const guilds = await this.getGuilds()
           let memberCount = 0
 
           for (const anonymousGuild of guilds) {
@@ -127,23 +160,52 @@ export class Statfert {
       }
     }
 
+    if (this.graphs.length > 0)
+      body = {
+        ...body,
+        customCharts: this.graphs.map((graph) => ({
+          id: graph.id,
+          data: graph.data,
+        })),
+      }
+
+    if (this.commands.size > 0) {
+      const commands = [...this.commands.entries()].map(([name, count]) => ({
+        name,
+        count,
+      }))
+
+      body = {
+        ...body,
+        topCommands: commands.sort((a, b) => b.count - a.count),
+      }
+    }
+
     return body
   }
 
-  protected async postStats(botId: string, body: Record<string, any>) {
-    const response = await request(this.basePostingUrl(botId), {
-      method: 'POST',
-      headers: {
-        // eslint-disable-next-line @typescript-eslint/naming-convention
-        Authorization: this.apiKey,
-      },
-      body: JSON.stringify(body),
-    })
+  protected async postStats(botId: string) {
+    if (this.isPosting) return
 
-    if (response.statusCode !== 200)
-      throw new Error(
-        `Request not successful. [${response.statusCode}] (${response.statusText})`
-      )
+    this.isPosting = true
+
+    try {
+      const response = await request(this.basePostingUrl(botId), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: this.apiKey,
+        },
+        body: JSON.stringify(this.body),
+      })
+
+      if (response.statusCode !== 200)
+        throw new Error(
+          `Request not successful. [${response.statusCode}] (${response.statusText})`
+        )
+    } finally {
+      this.isPosting = false
+    }
   }
 
   private async getGuilds() {
